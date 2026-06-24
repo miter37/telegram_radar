@@ -1,0 +1,54 @@
+# ---- Market Radar Desktop ----
+Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+global_ai_env/
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Secrets and runtime data (NEVER COMMIT) ----
+.env
+.env.local
+data/market_radar.sqlite
+data/market_radar.sqlite-*
+data/*.session
+data/*.session-*
+data/channels.json
+data/user_interests.json
+data/settings/
+data/reports/
+
+# ---- Logs and transient ----
+*.log
+*.tmp
+.tmp/
+
+# ---- Build artifacts ----
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc

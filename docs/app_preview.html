@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Radar Desktop App Plan</title>
+  <style>
+    :root {
+      --bg: #0a0d12;
+      --window: #11161e;
+      --panel: #151b24;
+      --panel2: #1a202b;
+      --line: #303746;
+      --line2: #3d4657;
+      --text: #d7dde8;
+      --muted: #8f98a8;
+      --muted2: #697386;
+      --accent: #4ea1ff;
+      --green: #36c275;
+      --yellow: #e4b341;
+      --red: #ef596f;
+      --orange: #e8833a;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080b0f;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .document { max-width: 1480px; margin: 0 auto; padding: 22px; }
+    .doc-header, .section {
+      border: 1px solid var(--line);
+      background: var(--window);
+      margin-bottom: 14px;
+    }
+    .doc-header { padding: 18px 20px; background: linear-gradient(180deg, #171d27, #11161e); }
+    .doc-header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 760; letter-spacing: -0.03em; }
+    .doc-header p { margin: 0; color: var(--muted); max-width: 1040px; }
+    .section-title {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: #181d26;
+      font-size: 14px;
+      font-weight: 760;
+    }
+    .section-body { padding: 14px; }
+    .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .box {
+      border: 1px solid var(--line);
+      background: #151a23;
+      padding: 12px;
+      min-height: 92px;
+    }
+    .box h3 { margin: 0 0 8px; font-size: 13px; font-weight: 760; }
+    .box p, .box li { color: var(--muted); }
+    .box p { margin: 0; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+    th { background: #202632; color: #c9d2e3; font-weight: 760; white-space: nowrap; }
+    td { color: var(--muted); background: #151a23; }
+    code, pre { font-family: var(--mono); font-size: 12px; }
+    code { background: #0f141b; border: 1px solid var(--line); padding: 1px 4px; color: #c9d7ff; }
+    pre { margin: 0; max-height: 520px; overflow: auto; white-space: pre-wrap; color: #d7dde8; background: #0e131a; border: 1px solid var(--line); padding: 12px; }
+    .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .step { border: 1px solid var(--line); background: #151a23; padding: 10px; min-height: 98px; }
+    .step .num {
+      display: inline-block; width: 20px; height: 20px; line-height: 19px; text-align: center;
+      background: #243145; border: 1px solid #38506f; color: #b9d8ff; font-family: var(--mono); margin-bottom: 6px;
+    }
+    .step strong { display: block; margin-bottom: 4px; }
+    .step p { margin: 0; color: var(--muted); font-size: 12px; }
+    .note { border-left: 3px solid var(--accent); background: #111b29; padding: 10px 12px; color: #b8c4d6; margin-top: 12px; }
+    .warning { border-left: 3px solid var(--orange); background: #221810; padding: 10px 12px; color: #ccbba8; margin-top: 12px; }
+
+    .desktop-frame { border: 1px solid #3a4352; background: #0a0d12; box-shadow: 0 10px 34px rgba(0,0,0,0.35); }
+    .titlebar {
+      height: 32px; background: #10151d; border-bottom: 1px solid var(--line);
+      display: grid; grid-template-columns: 180px 1fr 120px; align-items: center; user-select: none;
+    }
+    .win-controls { display: flex; gap: 7px; padding-left: 10px; align-items: center; }
+    .ctrl { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .ctrl.red { background: #e75d5d; } .ctrl.yellow { background: #e3b341; } .ctrl.green { background: #43c16f; }
+    .app-title { text-align: center; color: #c8d1e0; font-size: 12px; font-weight: 650; }
+    .app-version { text-align: right; padding-right: 10px; color: var(--muted2); font-family: var(--mono); font-size: 11px; }
+    .toolbar {
+      height: 42px; background: #151a22; border-bottom: 1px solid var(--line);
+      display: grid; grid-template-columns: 260px 1fr 420px; gap: 8px; align-items: center; padding: 0 8px;
+    }
+    .brand { font-weight: 800; color: #e9eef8; letter-spacing: -0.02em; }
+    .statusline { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .toolbar-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+    .input, .select { height: 26px; background: #0f141b; color: var(--text); border: 1px solid #353d4c; padding: 0 8px; outline: none; font-family: var(--sans); font-size: 12px; }
+    .input { min-width: 220px; }
+    .btn { height: 26px; border: 1px solid #3b4658; background: #202735; color: #dbe4f2; font-size: 12px; padding: 0 9px; cursor: pointer; }
+    .btn:hover { background: #293244; }
+    .btn.primary { border-color: #4c78a8; background: #1f4f82; }
+    .app-layout { display: grid; grid-template-columns: 178px 1fr 310px; min-height: 760px; }
+    .leftnav { background: #11161e; border-right: 1px solid var(--line); padding: 8px; }
+    .nav-item { height: 31px; display: flex; align-items: center; padding: 0 9px; margin-bottom: 3px; color: #aeb8c8; border: 1px solid transparent; cursor: pointer; font-size: 12px; }
+    .nav-item.active { color: #e5edf8; background: #1f2937; border-color: var(--line2); }
+    .nav-item:hover { background: #1b222e; border-color: var(--line); }
+    .nav-section { margin: 14px 0 6px; padding: 0 9px; color: #687386; font-size: 11px; font-family: var(--mono); text-transform: uppercase; }
+    .main-pane { background: #0f141b; min-width: 0; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .pane-head { height: 40px; display: grid; grid-template-columns: 1fr auto; align-items: center; border-bottom: 1px solid var(--line); padding: 0 10px; background: #151a22; }
+    .pane-title { font-weight: 760; color: #e5edf8; }
+    .pane-sub { color: var(--muted2); font-size: 11px; font-family: var(--mono); }
+    .split { display: grid; grid-template-columns: 1fr 280px; gap: 0; min-height: 720px; }
+    .table-wrap { overflow: auto; max-height: 720px; border-right: 1px solid var(--line); }
+    .data-table { min-width: 980px; font-size: 12px; }
+    .data-table th { position: sticky; top: 0; z-index: 2; background: #222936; color: #d4dce8; padding: 6px 7px; }
+    .data-table td { padding: 6px 7px; background: #10161f; color: #b7c0cf; white-space: nowrap; }
+    .data-table tr:nth-child(even) td { background: #121923; }
+    .data-table tr:hover td { background: #1a2432; }
+    .summary-cell { white-space: normal !important; min-width: 290px; color: #d3dbe8 !important; }
+    .tags-cell { white-space: normal !important; min-width: 250px; }
+    .tag { display: inline-block; padding: 1px 5px; margin: 1px; background: #1d2a3b; border: 1px solid #334762; color: #c7dcf8; font-size: 11px; font-family: var(--mono); }
+    .score { font-family: var(--mono); font-weight: 800; text-align: right; }
+    .score.high { color: #ff8494; } .score.mid { color: #eac45c; } .score.low { color: #8bbef8; }
+    .mini-btn { height: 22px; font-size: 11px; padding: 0 6px; background: #1c2532; color: #cbd5e1; border: 1px solid #3a4352; cursor: pointer; }
+    .rightpane { background: #121820; padding: 8px; }
+    .side-panel { border: 1px solid var(--line); background: #151b24; margin-bottom: 8px; }
+    .side-title { height: 28px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; color: #dce4f1; font-weight: 760; font-size: 12px; background: #1a202b; }
+    .side-body { padding: 8px; }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .metric { border: 1px solid var(--line); background: #10161f; padding: 7px; }
+    .metric .v { font-family: var(--mono); color: #e5edf8; font-size: 17px; font-weight: 800; }
+    .metric .l { color: var(--muted2); font-size: 11px; }
+    .rank-list { display: grid; gap: 5px; }
+    .rank-row { display: grid; grid-template-columns: 22px 1fr 38px; gap: 6px; align-items: center; font-size: 12px; }
+    .rank-no { font-family: var(--mono); color: var(--muted2); }
+    .bar-bg { height: 6px; background: #252c38; margin-top: 3px; }
+    .bar { height: 100%; background: var(--accent); }
+    .flow-grid { display: grid; grid-template-columns: 1fr 340px; gap: 0; min-height: 720px; }
+    .heatmap { padding: 10px; overflow: auto; }
+    .heat-table { min-width: 860px; font-size: 12px; }
+    .heat-table td, .heat-table th { text-align: center; padding: 7px; background: #10161f; }
+    .heat-table td:first-child, .heat-table th:first-child { text-align: left; width: 150px; }
+    .h0 { background: #111820 !important; color: #6c7688 !important; }
+    .h1 { background: #142235 !important; color: #a7ccff !important; }
+    .h2 { background: #1d3652 !important; color: #c2dcff !important; }
+    .h3 { background: #51421d !important; color: #f3d77a !important; }
+    .h4 { background: #5a2631 !important; color: #ff9cac !important; }
+    .daily-layout { display: grid; grid-template-columns: 210px 1fr; min-height: 720px; }
+    .date-list { background: #121820; border-right: 1px solid var(--line); padding: 8px; }
+    .date-row { border: 1px solid var(--line); background: #151b24; padding: 7px 8px; margin-bottom: 5px; cursor: pointer; }
+    .date-row.active { background: #1f2937; border-color: #4a5c78; }
+    .brief-list { padding: 10px; overflow: auto; }
+    .brief-card { border: 1px solid var(--line); background: #141a23; margin-bottom: 8px; }
+    .brief-head { height: 31px; display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 0 9px; border-bottom: 1px solid var(--line); background: #1a202b; }
+    .brief-body { padding: 9px; color: #b8c1d0; }
+    .analysis-layout { display: grid; grid-template-columns: 285px 1fr; min-height: 720px; }
+    .analysis-form { background: #121820; border-right: 1px solid var(--line); padding: 10px; }
+    .analysis-output { padding: 10px; overflow: auto; }
+    .timeline { border-left: 2px solid #334762; margin: 10px 0 0 8px; padding-left: 10px; }
+    .timeline-item { margin-bottom: 12px; }
+    .timeline-date { color: #b9d8ff; font-family: var(--mono); font-size: 12px; margin-bottom: 2px; }
+    .timeline-body { color: #b8c1d0; }
+    .settings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.58); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal { width: min(920px, calc(100vw - 36px)); max-height: min(720px, calc(100vh - 36px)); background: #11161e; border: 1px solid #4b5565; box-shadow: 0 18px 50px rgba(0,0,0,0.5); display: grid; grid-template-rows: 36px 1fr 40px; }
+    .modal-head { display: grid; grid-template-columns: 1fr auto; align-items: center; border-bottom: 1px solid var(--line); background: #1a202b; padding: 0 10px; font-weight: 760; }
+    .modal-body { padding: 12px; overflow: auto; color: #c7d0df; white-space: pre-wrap; font-size: 13px; line-height: 1.6; }
+    .modal-foot { border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: flex-end; padding: 0 10px; background: #151b24; }
+    .kbd { font-family: var(--mono); color: var(--muted2); font-size: 11px; }
+    @media (max-width: 1180px) {
+      .cols-2, .cols-3, .pipeline, .flow-grid, .analysis-layout, .settings-grid { grid-template-columns: 1fr; }
+      .app-layout { grid-template-columns: 150px 1fr; }
+      .rightpane { display: none; }
+      .toolbar { grid-template-columns: 220px 1fr; }
+      .toolbar-actions { display: none; }
+      .split { grid-template-columns: 1fr; }
+      .table-wrap { border-right: 0; }
+    }
+    @media (max-width: 760px) {
+      .document { padding: 10px; }
+      .app-layout, .daily-layout { grid-template-columns: 1fr; }
+      .leftnav { border-right: 0; border-bottom: 1px solid var(--line); }
+      .titlebar { grid-template-columns: 90px 1fr 70px; }
+      .pipeline { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="document">
+  <header class="doc-header">
+    <h1>Market Radar Desktop</h1>
+    <p>텔레그램 주식 피드를 실시간 수집해 LLM 한 번의 호출로 주제, 주요내용, 정규화 태그, 중요도 점수, 관심분야 연관성 점수를 생성하고, DB에 저장한 뒤 태그·주제별 흐름을 추적하는 윈도우 데스크톱 앱.</p>
+  </header>
+
+  <section class="section">
+    <div class="section-title">서비스 구조</div>
+    <div class="section-body">
+      <div class="pipeline">
+        <div class="step"><span class="num">1</span><strong>Telegram ingest</strong><p>채널명, 시간, 원문, 메시지 링크를 수집하고 원문 테이블에 저장.</p></div>
+        <div class="step"><span class="num">2</span><strong>LLM one-pass</strong><p>원문 1건 또는 소량 배치를 JSON으로 구조화. 별도 맥락 입력 없음.</p></div>
+        <div class="step"><span class="num">3</span><strong>Validate</strong><p>주제 12자, 주요내용 50자, 점수 0~100, JSON 필수값 검사.</p></div>
+        <div class="step"><span class="num">4</span><strong>Normalize</strong><p>태그명은 사전/룰/유사도 기반으로 기업·인물·산업 표준값에 매핑.</p></div>
+        <div class="step"><span class="num">5</span><strong>Store</strong><p>feed_items, feed_signals, normalized_tags, topic_clusters에 저장.</p></div>
+        <div class="step"><span class="num">6</span><strong>Analyze flow</strong><p>일자별 주제, 태그 상승률, 관심도 변화, 분석 요청 결과 생성.</p></div>
+      </div>
+      <div class="note">실시간 저장 단계의 LLM 입력은 단순하게 유지한다. 메시지 원문, 날짜, 채널명, 메시지 링크, 사용자 관심분야만 넣고, 최근 상위 주제나 대량 태그 사전은 프롬프트에 넣지 않는다.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">LLM 입력/출력 설계</div>
+    <div class="section-body cols-2">
+      <div class="box">
+        <h3>입력</h3>
+        <table><tbody>
+          <tr><th>datetime</th><td>수집 시각</td></tr>
+          <tr><th>channel_name</th><td>텔레그램 채널명</td></tr>
+          <tr><th>message_text</th><td>피드 원문</td></tr>
+          <tr><th>message_url</th><td>원문 이동 링크. 없으면 null.</td></tr>
+          <tr><th>user_interests</th><td>관심 종목/산업/키워드의 짧은 리스트</td></tr>
+        </tbody></table>
+      </div>
+      <div class="box">
+        <h3>출력</h3>
+        <table><tbody>
+          <tr><th>topic</th><td>주제. 12자 이내.</td></tr>
+          <tr><th>main_content</th><td>주요내용. 50자 이내.</td></tr>
+          <tr><th>tags</th><td>정규화 이름으로 쓰려는 태그 리스트.</td></tr>
+          <tr><th>tag_groups</th><td>companies, people, industries로 분리된 태그 묶음.</td></tr>
+          <tr><th>importance_score</th><td>중요도 0~100.</td></tr>
+          <tr><th>interest_score</th><td>관심분야 연관성 0~100.</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">LLM 프롬프트 초안</div>
+    <div class="section-body">
+<pre>{SYSTEM}
+너는 주식 관련 텔레그램 피드를 DB에 저장 가능한 구조로 변환하는 정보 추출 엔진이다.
+반드시 JSON만 출력한다. 설명문, markdown, 주석은 출력하지 않는다.
+
+원칙:
+1. 원문에 없는 사실을 만들지 않는다.
+2. 투자 의견, 매수/매도 추천을 쓰지 않는다.
+3. topic은 12자 이내 한국어 명사구로 쓴다.
+4. main_content는 50자 이내 한국어 한 문장으로 쓴다.
+5. tags는 기업, 주요 인물, 산업분야, 제품/기술 중심으로 뽑는다.
+6. tags는 가능한 표준명으로 쓴다. 예: 하닉 → SK하이닉스, 젠슨 → 젠슨 황.
+7. 확신이 낮아도 별도 후보/타입을 만들지 말고, 가장 그럴듯한 표준 태그명만 tags에 넣는다.
+8. tag_groups에는 tags를 companies, people, industries로만 분리한다.
+9. 해당 그룹이 없으면 빈 배열을 쓴다.
+10. importance_score와 interest_score는 0~100 정수로 쓴다.
+11. importance_score는 시장 민감도, 실적/수급/규제/공급망 관련성, 구체성, 즉시성 기준으로 판단한다.
+12. interest_score는 user_interests와의 직접/간접 관련성 기준으로 판단한다.
+
+{INPUT}
+{
+  "datetime": "{{datetime}}",
+  "channel_name": "{{channel_name}}",
+  "message_text": "{{message_text}}",
+  "message_url": "{{message_url}}",
+  "user_interests": {{user_interests_json}}
+}
+
+{OUTPUT_JSON_SCHEMA}
+{
+  "datetime": "YYYY-MM-DDTHH:mm:ss+09:00",
+  "channel_name": "string",
+  "topic": "string, max 12 Korean chars",
+  "main_content": "string, max 50 Korean chars",
+  "tags": ["string"],
+  "tag_groups": {
+    "companies": ["string"],
+    "people": ["string"],
+    "industries": ["string"]
+  },
+  "importance_score": 0,
+  "interest_score": 0,
+  "should_alert": false
+}</pre>
+      <div class="warning">태그 정규화는 LLM 출력 이후 시스템 레이어에서 다시 수행한다. LLM이 뽑은 tags는 초안값이고, DB에는 canonical_tag_id까지 매핑된 값을 저장한다.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">DB 설계</div>
+    <div class="section-body">
+      <table><thead><tr><th>테이블</th><th>필드</th><th>역할</th></tr></thead><tbody>
+        <tr><td><code>feed_items</code></td><td>id, datetime, channel_name, message_text, message_url, raw_hash, collected_at</td><td>원문 저장. 실시간 피드에서 원문 팝업을 열 때 사용.</td></tr>
+        <tr><td><code>llm_extractions</code></td><td>feed_id, prompt_version, raw_json, parsed_ok, error_message</td><td>LLM 원본 결과 보관. 프롬프트 개선과 재처리 추적.</td></tr>
+        <tr><td><code>feed_signals</code></td><td>feed_id, date, channel_name, topic, main_content, importance_score, interest_score, should_alert</td><td>실시간 DB 피드 화면의 메인 테이블.</td></tr>
+        <tr><td><code>signal_tags</code></td><td>feed_id, canonical_tag_id, canonical_name, tag_group, normalize_confidence</td><td>피드별 표준 태그 연결. tag_group은 company, person, industry.</td></tr>
+        <tr><td><code>canonical_tags</code></td><td>tag_id, canonical_name, tag_group, aliases, ticker, sector, parent_tag_id</td><td>표준 태그 사전. 운영자가 수정 가능.</td></tr>
+        <tr><td><code>topic_clusters</code></td><td>topic_id, topic, canonical_tags, first_seen_at, last_seen_at, feed_count, cluster_score</td><td>유사 피드 묶음. 중복 제거와 일자별 중요 주제 계산.</td></tr>
+        <tr><td><code>daily_topics</code></td><td>date, topic_id, daily_rank, summary, representative_feed_ids, total_score</td><td>날짜별 핵심 주제 화면에 사용.</td></tr>
+        <tr><td><code>tag_flow_metrics</code></td><td>tag_id, date, feed_count, avg_importance, avg_interest, velocity, acceleration</td><td>태그별 흐름 대시보드와 과거 대비 변화 분석.</td></tr>
+      </tbody></table>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">윈도우 데스크톱 앱 GUI 목업</div>
+    <div class="section-body">
+      <div class="desktop-frame">
+        <div class="titlebar">
+          <div class="win-controls"><span class="ctrl red"></span><span class="ctrl yellow"></span><span class="ctrl green"></span></div>
+          <div class="app-title">Market Radar Desktop</div>
+          <div class="app-version">v0.4.0</div>
+        </div>
+        <div class="toolbar">
+          <div class="brand">MARKET RADAR</div>
+          <div class="statusline">LIVE · collected 2,418 · llm ok 98.4% · normalized 91.2% · last update 10:42:18</div>
+          <div class="toolbar-actions"><input class="input" value="검색: HBM, SK하이닉스, 유리기판" /><button class="btn">필터</button><button class="btn">동기화</button><button class="btn primary">분석 요청</button></div>
+        </div>
+        <div class="app-layout">
+          <aside class="leftnav">
+            <div class="nav-section">FEED</div>
+            <div class="nav-item active" data-tab="tab-live">실시간 DB 피드</div>
+            <div class="nav-item" data-tab="tab-flow">흐름 대시보드</div>
+            <div class="nav-item" data-tab="tab-daily">일자별 주제</div>
+            <div class="nav-section">ANALYSIS</div>
+            <div class="nav-item" data-tab="tab-analysis">태그/주제 분석</div>
+            <div class="nav-item" data-tab="tab-cluster">주제 클러스터</div>
+            <div class="nav-section">SYSTEM</div>
+            <div class="nav-item" data-tab="tab-prompt">LLM 프롬프트</div>
+            <div class="nav-item" data-tab="tab-settings">설정/태그사전</div>
+          </aside>
+          <main class="main-pane">
+            <div class="tab-pane active" id="tab-live">
+              <div class="pane-head"><div><div class="pane-title">실시간 DB 피드</div><div class="pane-sub">feed_signals · 주요내용 50자 · 원문 팝업 지원</div></div><span class="kbd">F5 refresh · Enter open · Ctrl+F search</span></div>
+              <div class="split">
+                <div class="table-wrap">
+                  <table class="data-table"><thead><tr><th>시간</th><th>채널</th><th>주제</th><th>주요내용 ≤50자</th><th>태그</th><th>중요</th><th>관심</th><th>원문</th></tr></thead><tbody>
+                    <tr><td>10:42:11</td><td>채널 A</td><td>HBM테스트</td><td class="summary-cell">HBM 관심이 테스트 소켓과 검사 병목으로 확산</td><td class="tags-cell"><span class="tag">SK하이닉스</span><span class="tag">HBM</span><span class="tag">반도체테스트</span><span class="tag">ISC</span></td><td class="score high">92</td><td class="score high">88</td><td><button class="mini-btn" onclick="openRaw(0)">보기</button></td></tr>
+                    <tr><td>10:31:54</td><td>채널 F</td><td>유리기판</td><td class="summary-cell">유리기판 관련 SKC와 삼성전기 코멘트 재확산</td><td class="tags-cell"><span class="tag">SKC</span><span class="tag">삼성전기</span><span class="tag">유리기판</span><span class="tag">AI패키징</span></td><td class="score mid">81</td><td class="score mid">76</td><td><button class="mini-btn" onclick="openRaw(1)">보기</button></td></tr>
+                    <tr><td>10:10:07</td><td>채널 C</td><td>동박반등</td><td class="summary-cell">동박 가격 저점 통과 가능성 언급 증가</td><td class="tags-cell"><span class="tag">솔루스첨단소재</span><span class="tag">롯데에너지머티리얼즈</span><span class="tag">동박</span></td><td class="score mid">67</td><td class="score mid">72</td><td><button class="mini-btn" onclick="openRaw(2)">보기</button></td></tr>
+                    <tr><td>09:54:39</td><td>채널 H</td><td>전력기기</td><td class="summary-cell">AI 데이터센터 전력설비 발주 기대 지속</td><td class="tags-cell"><span class="tag">전력기기</span><span class="tag">데이터센터</span><span class="tag">변압기</span><span class="tag">LS ELECTRIC</span></td><td class="score mid">74</td><td class="score low">53</td><td><button class="mini-btn" onclick="openRaw(3)">보기</button></td></tr>
+                    <tr><td>09:41:22</td><td>채널 B</td><td>엔비디아</td><td class="summary-cell">젠슨 황 발언 후 AI 서버 수요 기대 재강화</td><td class="tags-cell"><span class="tag">젠슨 황</span><span class="tag">엔비디아</span><span class="tag">AI서버</span></td><td class="score mid">79</td><td class="score mid">69</td><td><button class="mini-btn" onclick="openRaw(4)">보기</button></td></tr>
+                  </tbody></table>
+                </div>
+                <aside class="rightpane">
+                  <div class="side-panel"><div class="side-title">TODAY</div><div class="side-body metric-grid"><div class="metric"><div class="v">2,418</div><div class="l">수집</div></div><div class="metric"><div class="v">37</div><div class="l">S/A</div></div><div class="metric"><div class="v">91.2%</div><div class="l">정규화</div></div><div class="metric"><div class="v">14</div><div class="l">신규태그</div></div></div></div>
+                  <div class="side-panel"><div class="side-title">상위 태그</div><div class="side-body rank-list">
+                    <div class="rank-row"><span class="rank-no">01</span><span>HBM<div class="bar-bg"><div class="bar" style="width:92%"></div></div></span><b>92</b></div>
+                    <div class="rank-row"><span class="rank-no">02</span><span>반도체테스트<div class="bar-bg"><div class="bar" style="width:86%"></div></div></span><b>86</b></div>
+                    <div class="rank-row"><span class="rank-no">03</span><span>유리기판<div class="bar-bg"><div class="bar" style="width:78%"></div></div></span><b>78</b></div>
+                    <div class="rank-row"><span class="rank-no">04</span><span>전력기기<div class="bar-bg"><div class="bar" style="width:67%"></div></div></span><b>67</b></div>
+                    <div class="rank-row"><span class="rank-no">05</span><span>동박<div class="bar-bg"><div class="bar" style="width:54%"></div></div></span><b>54</b></div>
+                  </div></div>
+                  <div class="side-panel"><div class="side-title">즉시 확인</div><div class="side-body"><div class="brief-body">HBM 관련 피드가 메모리 가격에서 테스트 병목으로 세분화. 관심분야 연관성 상위.</div></div></div>
+                </aside>
+              </div>
+            </div>
+            <div class="tab-pane" id="tab-flow">
+              <div class="pane-head"><div><div class="pane-title">흐름 대시보드</div><div class="pane-sub">tag_flow_metrics · 일자별 가중 중요도</div></div><span class="kbd">최근 7일</span></div>
+              <div class="flow-grid"><div class="heatmap"><table class="heat-table"><thead><tr><th>태그</th><th>6/18</th><th>6/19</th><th>6/20</th><th>6/21</th><th>6/22</th><th>6/23</th><th>6/24</th><th>변화</th></tr></thead><tbody>
+                <tr><td>HBM</td><td class="h1">31</td><td class="h1">34</td><td class="h2">48</td><td class="h2">51</td><td class="h3">66</td><td class="h4">88</td><td class="h4">92</td><td class="h4">▲ 강함</td></tr>
+                <tr><td>반도체테스트</td><td class="h0">16</td><td class="h1">22</td><td class="h1">29</td><td class="h2">44</td><td class="h2">57</td><td class="h3">73</td><td class="h4">86</td><td class="h4">▲ 강함</td></tr>
+                <tr><td>유리기판</td><td class="h0">12</td><td class="h1">21</td><td class="h1">28</td><td class="h2">41</td><td class="h1">32</td><td class="h3">68</td><td class="h3">78</td><td class="h3">▲ 상승</td></tr>
+                <tr><td>동박</td><td class="h0">18</td><td class="h0">15</td><td class="h1">24</td><td class="h1">27</td><td class="h1">31</td><td class="h2">44</td><td class="h2">54</td><td class="h2">△ 초기</td></tr>
+                <tr><td>전력기기</td><td class="h2">43</td><td class="h1">39</td><td class="h1">35</td><td class="h2">49</td><td class="h2">58</td><td class="h2">61</td><td class="h3">67</td><td class="h2">→ 유지</td></tr>
+              </tbody></table></div><aside class="rightpane"><div class="side-panel"><div class="side-title">변화 해석</div><div class="side-body"><div class="brief-body">HBM 일반 수혜에서 테스트 소켓·검사 병목 쪽으로 세부 주제가 이동하고 있음.</div><div class="brief-body">유리기판은 단기 확산이 빠르지만 피드 출처 확인이 필요.</div><div class="brief-body">동박은 초기 반등 내러티브이나 중요도는 아직 중간 이하.</div></div></div></aside></div>
+            </div>
+            <div class="tab-pane" id="tab-daily">
+              <div class="pane-head"><div><div class="pane-title">일자별 주제</div><div class="pane-sub">daily_topics · 과거 날짜 포함 조회</div></div><span class="kbd">기간: 2026-06-18 ~ 2026-06-24</span></div>
+              <div class="daily-layout"><div class="date-list"><div class="date-row active"><b>2026-06-24</b><br><span class="kbd">핵심 8 · S 3</span></div><div class="date-row"><b>2026-06-23</b><br><span class="kbd">핵심 7 · S 2</span></div><div class="date-row"><b>2026-06-22</b><br><span class="kbd">핵심 6 · S 1</span></div><div class="date-row"><b>2026-06-21</b><br><span class="kbd">핵심 5 · S 1</span></div></div><div class="brief-list"><div class="brief-card"><div class="brief-head"><b>1. HBM테스트</b><span class="score high">92</span></div><div class="brief-body">HBM 공급부족 피드가 테스트·검사 병목으로 확장. SK하이닉스, ISC, 반도체테스트 태그 동반 상승.</div></div><div class="brief-card"><div class="brief-head"><b>2. 유리기판</b><span class="score mid">81</span></div><div class="brief-body">SKC, 삼성전기 관련 코멘트 재확산. 단기 관심도는 높으나 원문 확인 필요.</div></div><div class="brief-card"><div class="brief-head"><b>3. 전력기기</b><span class="score mid">74</span></div><div class="brief-body">AI 데이터센터 전력설비 발주 기대 유지. 급상승보다는 고수준 유지 흐름.</div></div></div></div>
+            </div>
+            <div class="tab-pane" id="tab-analysis">
+              <div class="pane-head"><div><div class="pane-title">태그/주제 분석</div><div class="pane-sub">요청 시 최근 피드 묶음 분석</div></div><span class="kbd">on-demand LLM</span></div>
+              <div class="analysis-layout"><div class="analysis-form"><label class="kbd">분석 대상</label><input class="input" id="analysisTarget" value="HBM테스트" style="width:100%; margin:5px 0 8px;" /><label class="kbd">기간</label><select class="select" style="width:100%; margin:5px 0 8px;"><option>최근 7일</option><option>최근 14일</option><option>최근 30일</option></select><label class="kbd">피드 범위</label><select class="select" style="width:100%; margin:5px 0 8px;"><option>내 관심분야 중심</option><option>전체 피드 기준</option><option>상위 중요도 피드만</option></select><button class="btn primary" style="width:100%;" onclick="runAnalysis()">분석 실행</button></div><div class="analysis-output" id="analysisOutput"><div class="brief-card"><div class="brief-head"><b>HBM테스트 분석 결과</b><span class="score high">관심 88</span></div><div class="brief-body">최근 피드 흐름은 HBM 일반 공급부족에서 테스트 소켓, 검사 공정, 프로브 관련 수혜로 관심이 이동하는 모습이다. 아직 공식 수주나 실적 추정 상향 근거는 제한적이므로 원문 피드와 공식 뉴스 확인이 필요하다.<div class="timeline"><div class="timeline-item"><div class="timeline-date">6/18</div><div class="timeline-body">HBM 공급부족과 메모리 가격 언급 중심.</div></div><div class="timeline-item"><div class="timeline-date">6/21</div><div class="timeline-body">패키징, 테스트, 검사 병목 표현 일부 등장.</div></div><div class="timeline-item"><div class="timeline-date">6/23</div><div class="timeline-body">ISC, 티에스이, 리노공업 등 소부장 태그 증가.</div></div><div class="timeline-item"><div class="timeline-date">6/24</div><div class="timeline-body">중요도와 관심도 모두 상위권. 세부 밸류체인으로 확산.</div></div></div></div></div></div></div>
+            </div>
+            <div class="tab-pane" id="tab-cluster"><div class="pane-head"><div><div class="pane-title">주제 클러스터</div><div class="pane-sub">유사 피드 묶음 · 중복 제거</div></div></div><div class="brief-list"><table class="data-table"><thead><tr><th>주제</th><th>대표 주요내용</th><th>피드수</th><th>첫 등장</th><th>최근</th><th>대표 태그</th></tr></thead><tbody><tr><td>HBM테스트</td><td class="summary-cell">HBM 관심이 테스트 소켓과 검사 병목으로 확산</td><td>42</td><td>6/18</td><td>10:42</td><td class="tags-cell"><span class="tag">HBM</span><span class="tag">반도체테스트</span></td></tr><tr><td>유리기판</td><td class="summary-cell">유리기판 관련 SKC와 삼성전기 코멘트 재확산</td><td>28</td><td>6/19</td><td>10:31</td><td class="tags-cell"><span class="tag">SKC</span><span class="tag">유리기판</span></td></tr><tr><td>동박반등</td><td class="summary-cell">동박 가격 저점 통과 가능성 언급 증가</td><td>19</td><td>6/20</td><td>10:10</td><td class="tags-cell"><span class="tag">동박</span><span class="tag">솔루스첨단소재</span></td></tr></tbody></table></div></div>
+            <div class="tab-pane" id="tab-prompt"><div class="pane-head"><div><div class="pane-title">LLM 프롬프트</div><div class="pane-sub">실시간 피드 구조화용</div></div><span class="kbd">feed_extract_v0.5</span></div><div style="padding:10px;"><pre>입력: datetime, channel_name, message_text, message_url, user_interests
+출력: topic(12자 이내), main_content(50자 이내), tags, tag_groups, importance_score, interest_score, should_alert
+
+대량 태그 사전이나 최근 상위 주제는 입력하지 않는다.
+태그 정규화는 LLM 이후 canonical_tags 레이어에서 처리한다.</pre></div></div>
+            <div class="tab-pane" id="tab-settings"><div class="pane-head"><div><div class="pane-title">설정/태그사전</div><div class="pane-sub">관심분야, canonical_tags, 알림 기준</div></div></div><div class="settings-grid"><div class="side-panel"><div class="side-title">관심분야</div><div class="side-body"><span class="tag">SK하이닉스</span><span class="tag">HBM</span><span class="tag">반도체테스트</span><span class="tag">유리기판</span><span class="tag">동박</span></div></div><div class="side-panel"><div class="side-title">정규화 예시</div><div class="side-body"><table><tr><th>alias</th><th>canonical</th></tr><tr><td>하닉</td><td>SK하이닉스</td></tr><tr><td>젠슨</td><td>젠슨 황</td></tr><tr><td>테스트소켓</td><td>반도체테스트</td></tr></table></div></div><div class="side-panel"><div class="side-title">알림 기준</div><div class="side-body"><ul><li>importance_score ≥ 80</li><li>interest_score ≥ 70</li><li>동일 주제 클러스터는 묶어서 알림</li><li>원문 보기 버튼으로 즉시 검증</li></ul></div></div></div></div>
+          </main>
+          <aside class="rightpane">
+            <div class="side-panel"><div class="side-title">SYSTEM</div><div class="side-body metric-grid"><div class="metric"><div class="v">98.4%</div><div class="l">LLM OK</div></div><div class="metric"><div class="v">312ms</div><div class="l">avg parse</div></div><div class="metric"><div class="v">14</div><div class="l">channels</div></div><div class="metric"><div class="v">6</div><div class="l">alerts</div></div></div></div>
+            <div class="side-panel"><div class="side-title">PROCESS</div><div class="side-body"><div class="kbd">1 ingest raw feed</div><div class="kbd">2 one-pass LLM JSON</div><div class="kbd">3 schema validation</div><div class="kbd">4 normalize tags</div><div class="kbd">5 store signal</div><div class="kbd">6 update flow metrics</div></div></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">제품 방향</div>
+    <div class="section-body cols-3">
+      <div class="box"><h3>표 중심 GUI</h3><p>카드형 UI보다 정보 밀도를 높인 테이블, 분할 패널, 상태바, 단축키 중심 디자인.</p></div>
+      <div class="box"><h3>원문 검증 가능</h3><p>주요내용만 보되, 각 행의 보기 버튼으로 텔레그램 원문을 팝업 확인.</p></div>
+      <div class="box"><h3>실시간 저장 + 사후 분석</h3><p>실시간은 가볍게 JSON 추출, 깊은 해석은 사용자가 요청할 때 실행.</p></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeRaw(event)">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><span id="modalTitle">원문 피드</span><button class="mini-btn" onclick="closeRaw()">닫기</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot"><span class="kbd">원문은 feed_items.message_text에서 로드 · Esc 닫기</span></div>
+  </div>
+</div>
+
+<script>
+  const rawFeeds = [
+    { title: "10:42:11 · 채널 A · HBM테스트", body: "[원문]\n하닉 HBM 관련해서 이제 단순 가격 얘기보다 테스트 병목 쪽이 더 중요해지는 듯. ISC/티에스이/리노 쪽 언급이 늘어나는 중. 아직 공식 확인은 필요.\n\n[LLM 저장값]\n주제: HBM테스트\n주요내용: HBM 관심이 테스트 소켓과 검사 병목으로 확산\n태그: SK하이닉스, HBM, 반도체테스트, ISC\n중요도: 92 / 관심도: 88" },
+    { title: "10:31:54 · 채널 F · 유리기판", body: "[원문]\n유리기판 관련 SKC와 삼성전기 이름이 다시 같이 돌고 있음. 구체적인 공식 뉴스는 아직 안 보이고 채널 코멘트 중심.\n\n[LLM 저장값]\n주제: 유리기판\n주요내용: 유리기판 관련 SKC와 삼성전기 코멘트 재확산\n태그: SKC, 삼성전기, 유리기판, AI패키징\n중요도: 81 / 관심도: 76" },
+    { title: "10:10:07 · 채널 C · 동박반등", body: "[원문]\n동박 가격 쪽은 바닥 지났다는 코멘트가 조금씩 나옴. 솔루스, 롯데에너지머티리얼즈 같이 언급. 아직 강한 흐름은 아님.\n\n[LLM 저장값]\n주제: 동박반등\n주요내용: 동박 가격 저점 통과 가능성 언급 증가\n태그: 솔루스첨단소재, 롯데에너지머티리얼즈, 동박\n중요도: 67 / 관심도: 72" },
+    { title: "09:54:39 · 채널 H · 전력기기", body: "[원문]\nAI 데이터센터 전력 인프라 발주 기대가 계속 유지. 변압기, 전력기기, 냉각 쪽 언급도 같이 나옴.\n\n[LLM 저장값]\n주제: 전력기기\n주요내용: AI 데이터센터 전력설비 발주 기대 지속\n태그: 전력기기, 데이터센터, 변압기, LS ELECTRIC\n중요도: 74 / 관심도: 53" },
+    { title: "09:41:22 · 채널 B · 엔비디아", body: "[원문]\n젠슨 황 발언 이후 AI 서버 수요 기대가 다시 강해지는 분위기. 엔비디아 밸류체인 언급 증가.\n\n[LLM 저장값]\n주제: 엔비디아\n주요내용: 젠슨 황 발언 후 AI 서버 수요 기대 재강화\n태그: 젠슨 황, 엔비디아, AI서버\n중요도: 79 / 관심도: 69" }
+  ];
+
+  const navItems = document.querySelectorAll(".nav-item");
+  const tabs = document.querySelectorAll(".tab-pane");
+  navItems.forEach(item => {
+    item.addEventListener("click", () => {
+      navItems.forEach(i => i.classList.remove("active"));
+      tabs.forEach(t => t.classList.remove("active"));
+      item.classList.add("active");
+      const target = document.getElementById(item.dataset.tab);
+      if (target) target.classList.add("active");
+    });
+  });
+  function openRaw(index) {
+    const data = rawFeeds[index] || rawFeeds[0];
+    document.getElementById("modalTitle").textContent = data.title;
+    document.getElementById("modalBody").textContent = data.body;
+    document.getElementById("modalBackdrop").style.display = "flex";
+  }
+  function closeRaw(event) {
+    if (!event || event.target.id === "modalBackdrop" || event.target.tagName === "BUTTON") {
+      document.getElementById("modalBackdrop").style.display = "none";
+    }
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") document.getElementById("modalBackdrop").style.display = "none";
+  });
+  function runAnalysis() {
+    const target = document.getElementById("analysisTarget").value || "선택 주제";
+    const output = document.getElementById("analysisOutput");
+    output.innerHTML = `<div class="brief-card"><div class="brief-head"><b>${target} 분석 결과</b><span class="score high">관심 88</span></div><div class="brief-body">최근 피드 기준으로 ${target} 관련 흐름은 단순 반복 피드에서 세부 밸류체인과 수혜 범위 확인으로 이동하고 있다. 중요도와 관심도는 모두 상승했지만, 실제 투자 판단 전에는 원문과 공식 출처 확인이 필요하다.<div class="timeline"><div class="timeline-item"><div class="timeline-date">D-6</div><div class="timeline-body">초기 언급은 소수 채널 중심.</div></div><div class="timeline-item"><div class="timeline-date">D-4</div><div class="timeline-body">관련 기업 태그와 산업 태그가 함께 증가.</div></div><div class="timeline-item"><div class="timeline-date">D-2</div><div class="timeline-body">유사 주제 클러스터 형성.</div></div><div class="timeline-item"><div class="timeline-date">오늘</div><div class="timeline-body">관심분야 연관성 상위권. 원문 검증 필요.</div></div></div></div></div>`;
+  }
+</script>
+</body>
+</html>

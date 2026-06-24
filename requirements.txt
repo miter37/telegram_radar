@@ -1,0 +1,6 @@
+PySide6>=6.6
+telethon>=1.36
+httpx>=0.27
+python-dotenv>=1.0
+jsonschema>=4.21
+yfinance>=0.2
