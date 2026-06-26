@@ -167,12 +167,28 @@ class MainWindow(QMainWindow):
         self._theme_name = new
         app = QApplication.instance()
         if app is not None:
+            # Clear inline stylesheets so global theme takes effect
+            self._clear_inline_styles(self)
             app.setStyleSheet(THEMES[new])
+            # Re-apply after clear for safety
+            app.processEvents()
         self._theme_btn.setText(THEME_LABELS.get(new, "🌙 다크"))
         try:
             save_theme_pref(new)
         except Exception:
             pass
+
+    def _clear_inline_styles(self, root) -> None:
+        """Recursively clear inline stylesheets so global theme can take effect.
+
+        Widgets may have setStyleSheet("...") calls in their constructors
+        that override the global theme. We keep the global theme intact by
+        clearing the inline overrides.
+        """
+        from PySide6.QtWidgets import QWidget
+        for w in root.findChildren(QWidget):
+            if w.styleSheet():
+                w.setStyleSheet("")
 
     def _build_rightpane(self) -> QFrame:
         from .right_pane import RightPane
@@ -360,7 +376,30 @@ class MainWindow(QMainWindow):
 
     def _on_error(self, msg: str) -> None:
         logger.error(msg)
-        self._status_msg.setText(f"오류: {msg}")
+        # accumulate errors (cap at 100)
+        from datetime import datetime as _dt
+        self._errors.append((_dt.now().isoformat(timespec="seconds"), msg))
+        if len(self._errors) > 100:
+            self._errors = self._errors[-100:]
+        self._status_msg.setText(f"⚠ 오류 [{len(self._errors)}]: {msg}")
+        # tray notification (best-effort)
+        try:
+            from PySide6.QtWidgets import QSystemTrayIcon
+            tray = getattr(self, "_tray", None)
+            if tray is None:
+                tray = QSystemTrayIcon(self.windowIcon(), self)
+                tray.setToolTip("Market Radar")
+                self._tray = tray
+            if not tray.isVisible():
+                tray.show()
+            tray.showMessage(
+                "Market Radar 오류",
+                msg[:200],
+                QSystemTrayIcon.Warning,
+                5000,
+            )
+        except Exception:
+            pass
 
     def _on_login_required(self, message: str, kind: str) -> None:
         """Show a modal QInputDialog for the login code or 2FA password.

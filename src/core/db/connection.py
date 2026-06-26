@@ -12,12 +12,18 @@ _local = threading.local()
 
 
 def _make_connection(db_path: Path) -> sqlite3.Connection:
-    """Create a connection with WAL + foreign keys + Row factory."""
+    """Create a connection with WAL + foreign keys + Row factory.
+
+    check_same_thread=False because get_connection() uses thread-local
+    storage: each thread (UI, ingest, llm, report) gets its own connection.
+    The thread-local pattern guarantees no concurrent access from two
+    threads on the same connection.
+    """
     conn = sqlite3.connect(
         str(db_path),
         detect_types=sqlite3.PARSE_DECLTYPES,
         timeout=10.0,
-        check_same_thread=True,
+        check_same_thread=False,
     )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")

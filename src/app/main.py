@@ -10,8 +10,8 @@ from PySide6.QtWidgets import QApplication
 
 from .ui.main_window import MainWindow
 from .ui.theme import load_theme_pref, THEMES
-from ..core.config import DATA_DIR
-from ..core.db import connection
+from core.config import DATA_DIR
+from core.db import connection
 
 logging.basicConfig(
     level=logging.INFO,

@@ -206,8 +206,8 @@ class IngestWorker(QThread):
         if self._client is not None:
             try:
                 await self._client.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("client.disconnect failed during shutdown: %s", e)
 
     async def _backfill_new_channels(self, ids: set[int], my_id: int) -> None:
         """Backfill history for newly added channels (state in channel_q)."""
@@ -269,7 +269,8 @@ class IngestWorker(QThread):
             return
         try:
             data = json.loads(channels_path.read_text(encoding="utf-8"))
-        except Exception:
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("channels.json parse failed: %s", e)
             return
 
         for entry in data:
@@ -306,8 +307,8 @@ class IngestWorker(QThread):
             if self._handler_registered:
                 try:
                     self._client.remove_event_handler(self._handler)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("remove_event_handler failed: %s", e)
                 self._handler_registered = False
             if not ids:
                 return

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, time as dt_time, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -83,7 +83,17 @@ class ReportWorker(QThread):
         if self._last_tick and (now - self._last_tick) < timedelta(minutes=10):
             return
         self._last_tick = now
-        if now.hour != cfg.hour or now.minute < cfg.minute or now.minute >= cfg.minute + 10:
+        # Window check using datetime.time (handles minute=55 wrap correctly)
+        target = dt_time(cfg.hour, cfg.minute)
+        end_minute = cfg.minute + 10
+        if end_minute >= 60:
+            end_hour = (cfg.hour + 1) % 24
+            end_minute -= 60
+        else:
+            end_hour = cfg.hour
+        window_end = dt_time(end_hour, end_minute)
+        now_t = dt_time(now.hour, now.minute)
+        if not (target <= now_t < window_end):
             return
         # Pick "yesterday" in KST. For simplicity, use today's date — the user
         # usually wants the day's morning summary of what was collected.
