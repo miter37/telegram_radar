@@ -8,9 +8,9 @@ from jsonschema import Draft7Validator
 
 # Korean-char length caps matching feed_extract_v0.1 prompt rules:
 #   - topic: 12자 이내
-#   - main_content: 50자 이내
+#   - main_content: 200자 이내
 TOPIC_MAX_CHARS = 12
-MAIN_CONTENT_MAX_CHARS = 50
+MAIN_CONTENT_MAX_CHARS = 200
 
 SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -74,7 +74,7 @@ def validate(payload: dict) -> tuple[bool, str | None]:
 
 def coerce(payload: dict) -> dict:
     """Best-effort coercion: clip scores, ensure list types, defaults,
-    and enforce Korean-char length caps on topic (12) + main_content (50).
+    and enforce Korean-char length caps on topic (12) + main_content (200).
     """
     out = dict(payload)
     for key in ("importance_score", "interest_score"):

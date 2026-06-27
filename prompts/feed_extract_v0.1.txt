@@ -7,7 +7,7 @@
 1. 원문에 없는 사실을 만들지 않는다.
 2. 투자 의견, 매수/매도 추천을 쓰지 않는다.
 3. topic은 12자 이내 한국어 명사구로 쓴다.
-4. main_content는 50자 이내 한국어 한 문장으로 쓴다.
+4. main_content는 200자 이내 한국어 한 문장으로 쓴다.
 5. tags는 기업, 주요 인물, 산업분야, 제품/기술 중심으로 뽑는다.
 6. tags는 가능한 표준명으로 쓴다. 예: 하닉 → SK하이닉스, 젠슨 → 젠슨 황.
 7. 확신이 낮아도 별도 후보/타입을 만들지 말고, 가장 그럴듯한 표준 태그명만 tags에 넣는다.
@@ -32,7 +32,7 @@
   "datetime": "YYYY-MM-DDTHH:mm:ss+09:00",
   "channel_name": "string",
   "topic": "string, max 12 Korean chars",
-  "main_content": "string, max 50 Korean chars",
+  "main_content": "string, max 200 Korean chars",
   "tags": ["string"],
   "tag_groups": {
     "companies": ["string"],
