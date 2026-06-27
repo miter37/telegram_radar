@@ -52,3 +52,5 @@ dist/
 *.spec
 __pycache__/
 *.pyc
+
+ver*.zip
