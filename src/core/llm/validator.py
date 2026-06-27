@@ -8,9 +8,9 @@ from jsonschema import Draft7Validator
 
 # Korean-char length caps matching feed_extract_v0.1 prompt rules:
 #   - topic: 12자 이내
-#   - main_content: 200자 이내
+#   - main_content: 1-4 bullets prefixed with "- ", total <= 400 Korean chars
 TOPIC_MAX_CHARS = 12
-MAIN_CONTENT_MAX_CHARS = 200
+MAIN_CONTENT_MAX_CHARS = 400
 
 SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -37,6 +37,8 @@ SCHEMA: dict[str, Any] = {
                 "companies": {"type": "array", "items": {"type": "string"}},
                 "people": {"type": "array", "items": {"type": "string"}},
                 "industries": {"type": "array", "items": {"type": "string"}},
+                "products": {"type": "array", "items": {"type": "string"}},
+                "themes": {"type": "array", "items": {"type": "string"}},
             },
         },
         "importance_score": {"type": "integer", "minimum": 0, "maximum": 100},
@@ -89,7 +91,7 @@ def coerce(payload: dict) -> dict:
     tg = out.get("tag_groups") or {}
     if not isinstance(tg, dict):
         tg = {}
-    for k in ("companies", "people", "industries"):
+    for k in ("companies", "people", "industries", "products", "themes"):
         v = tg.get(k)
         if not isinstance(v, list):
             tg[k] = []

@@ -86,6 +86,41 @@ async def _process_one(
             interest_score=interest,
             should_alert=bool(p.get("should_alert")),
         )
+        # Remove stale signal_tags for this signal so we can re-insert cleanly.
+        conn.execute("DELETE FROM signal_tags WHERE signal_id = ?", (sig_id,))
+        # Insert tags from tag_groups + flat tags. Upsert each canonical tag,
+        # then link via signal_tags.
+        tag_groups = p.get("tag_groups") or {}
+        flat_tags: list[tuple[str, str]] = []  # (canonical_name, tag_group)
+        for grp in ("companies", "people", "industries", "products", "themes"):
+            for t in tag_groups.get(grp, []) or []:
+                t = str(t).strip()
+                if t:
+                    flat_tags.append((t, grp))
+        # Fallback: use flat tags list for anything not covered above.
+        covered = {name for name, _ in flat_tags}
+        for t in p.get("tags", []) or []:
+            t = str(t).strip()
+            if t and t not in covered:
+                flat_tags.append((t, "general"))
+                covered.add(t)
+        for canonical_name, grp in flat_tags:
+            try:
+                canonical_id = repositories.upsert_canonical_tag(
+                    conn,
+                    canonical_name=canonical_name,
+                    tag_group=grp,
+                )
+                repositories.insert_signal_tag(
+                    conn,
+                    feed_id=feed["id"],
+                    signal_id=sig_id,
+                    canonical_tag_id=canonical_id,
+                    canonical_name=canonical_name,
+                    tag_group=grp,
+                )
+            except Exception as e:
+                log.warning("signal_tag insert failed for %r: %s", canonical_name, e)
         conn.commit()
         return True, ""
     except Exception as e:
@@ -135,7 +170,7 @@ async def _main(args: argparse.Namespace) -> None:
         log.warning("resolve_model failed (continuing with configured): %s", e)
 
     # Process with concurrency.
-    sem = asyncio.Semaphore(3)
+    sem = asyncio.Semaphore(5)
 
     async def _run(feed: dict) -> tuple[int, bool, str]:
         async with sem:
