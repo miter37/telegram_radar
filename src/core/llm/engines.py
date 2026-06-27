@@ -304,6 +304,9 @@ async def chat_completion(
                 "temperature": temperature,
                 "top_p": top_p,
                 "max_tokens": max_tokens,
+                # Disable reasoning/thinking so response budget goes to JSON.
+                "chat_template_kwargs": {"enable_thinking": False},
+                "reasoning_effort": "low",
             }
             if extra:
                 body.update(extra)

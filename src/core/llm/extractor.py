@@ -222,6 +222,12 @@ class LLMExtractor:
                     "top_p": 0.9,
                     "max_tokens": 800,
                     "stream": False,
+                    # Disable thinking/reasoning for Qwen3 / DeepSeek-R1 style models
+                    # so the response token budget goes to the JSON payload,
+                    # not to internal reasoning chains. llama.cpp's OpenAI
+                    # server reads this from chat_template_kwargs.
+                    "chat_template_kwargs": {"enable_thinking": False},
+                    "reasoning_effort": "low",
                 }
                 r = await client.post(f"{self.base_url}/chat/completions", json=body)
                 r.raise_for_status()
