@@ -73,5 +73,7 @@ if ! "$PYTHON_BIN" -c "import PySide6, telethon, httpx, yfinance" 2>/dev/null; t
     "$PYTHON_BIN" -m pip install -r requirements.txt
 fi
 
-# Run
-exec "$PYTHON_BIN" run.py "$@"
+# Run (do NOT use exec — let the shell survive so error messages remain
+# visible after the GUI closes; some desktop launchers kill the parent shell
+# on exit which would swallow stderr).
+"$PYTHON_BIN" run.py "$@"
