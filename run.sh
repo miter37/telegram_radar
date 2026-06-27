@@ -7,6 +7,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Save the inherited GUI environment BEFORE running `bash -lic`, which
+# spawns a fresh shell that may not have these variables (login shells on
+# Wayland sessions sometimes lose DISPLAY/WAYLAND_DISPLAY/XAUTHORITY).
+PARENT_DISPLAY="$DISPLAY"
+PARENT_WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+PARENT_XAUTHORITY="$XAUTHORITY"
+PARENT_DBUS="$DBUS_SESSION_BUS_ADDRESS"
+
 # Load .env file if it exists (highest priority)
 if [ -f .env ]; then
     set -a
@@ -15,12 +23,7 @@ if [ -f .env ]; then
     set +a
 fi
 
-# If TG_* vars are still missing, try ~/.bashrc with login-shell semantics
-# (bash -lc forces ~/.bash_profile / ~/.profile to load, but ~/.bashrc is
-# typically interactive-only). We source it directly — if the user has the
-# standard interactive-only guard at the top of ~/.bashrc, that guard will
-# `return` early and TG_* won't appear. In that case, fall back to extracting
-# them from the live shell environment via the login-shell variant.
+# If TG_* vars are still missing, try ~/.bashrc via login-shell semantics.
 NEED_RC=0
 for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
     if [ -z "${!var:-}" ]; then
@@ -29,14 +32,21 @@ for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
     fi
 done
 if [ "$NEED_RC" = "1" ]; then
-    # Use `bash -lic` which loads /etc/profile, ~/.bash_profile, ~/.profile,
-    # and runs ~/.bashrc in interactive mode. Then export TG_* vars.
+    # `bash -lic` runs /etc/profile + ~/.bash_profile + ~/.profile + ~/.bashrc
+    # interactively. Use `< /dev/null` so bash doesn't hang waiting for stdin
+    # (process substitution alone doesn't always close stdin promptly).
     while IFS='=' read -r key value; do
         case "$key" in
             TG_*) export "$key=$value" ;;
         esac
-    done < <(bash -lic 'env' 2>/dev/null | grep -E '^TG_')
+    done < <(bash -lic 'env' < /dev/null 2>/dev/null | grep -E '^TG_')
 fi
+
+# Restore parent GUI env (in case `bash -lic` clobbered it)
+[ -n "$PARENT_DISPLAY" ] && export DISPLAY="$PARENT_DISPLAY"
+[ -n "$PARENT_WAYLAND_DISPLAY" ] && export WAYLAND_DISPLAY="$PARENT_WAYLAND_DISPLAY"
+[ -n "$PARENT_XAUTHORITY" ] && export XAUTHORITY="$PARENT_XAUTHORITY"
+[ -n "$PARENT_DBUS" ] && export DBUS_SESSION_BUS_ADDRESS="$PARENT_DBUS"
 
 # If still missing, offer to bootstrap .env from .env.example
 MISSING=()
