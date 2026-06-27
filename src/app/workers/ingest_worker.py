@@ -72,6 +72,38 @@ class IngestWorker(QThread):
     def update_enabled_channels(self, ids: set[int]) -> None:
         self._channel_q.put(ids)
 
+    def validate_channels_sync(
+        self,
+        ids: set[int],
+        timeout: float = 30.0,
+    ) -> tuple[set[int], dict[int, str]]:
+        """Sync wrapper around validate_channel_ids().
+
+        Posts the coroutine to the worker loop and waits for the result.
+        Returns (valid_ids, invalid_id→reason).
+        """
+        if not ids:
+            return set(), {}
+        if self._loop is None or not self._loop.is_running():
+            return set(ids), {i: "워커 미준비" for i in ids}
+        result_q: "queue.Queue" = queue.Queue()
+        future = asyncio.run_coroutine_threadsafe(
+            self._do_validate(list(ids), result_q),
+            self._loop,
+        )
+        try:
+            valid, invalid = result_q.get(timeout=timeout)
+            return valid, invalid
+        except queue.Empty:
+            return set(ids), {i: "validate 타임아웃" for i in ids}
+
+    async def _do_validate(self, ids: list[int], result_q) -> None:
+        try:
+            valid, invalid = await self.validate_channel_ids(set(ids))
+            result_q.put((valid, invalid))
+        except Exception as e:
+            result_q.put((set(), {i: f"validate 실패: {e}" for i in ids}))
+
     def provide_prompt_answer(self, text: str) -> None:
         self._prompt_q.put(text)
 
@@ -130,6 +162,34 @@ class IngestWorker(QThread):
                 q.put(result, timeout=2.0)
             except queue.Full:
                 pass
+
+    async def validate_channel_ids(self, ids: set[int]) -> tuple[set[int], dict[int, str]]:
+        """Validate that ids correspond to actual broadcast channels.
+
+        Returns (valid_ids, invalid_id→reason). Channels that resolve to
+        a User (PeerUser) or Chat (small group) are rejected since they
+        don't produce the broadcast events we need.
+        """
+        valid: set[int] = set()
+        invalid: dict[int, str] = {}
+        if self._client is None:
+            return valid, {i: "client not ready" for i in ids}
+        from telethon.tl.types import Channel as TLChannel
+        for cid in ids:
+            try:
+                entity = await self._client.get_entity(cid)
+            except Exception as e:
+                invalid[cid] = f"get_entity failed: {e.__class__.__name__}"
+                continue
+            if not isinstance(entity, TLChannel):
+                kind = type(entity).__name__
+                # PeerUser (User) or Chat (legacy small group) — wrong type
+                invalid[cid] = (
+                    f"{kind} (broadcast 채널이 아님 — public 채널 @username만 추가 가능)"
+                )
+                continue
+            valid.add(cid)
+        return valid, invalid
 
     def stop(self) -> None:
         self._stopped = True

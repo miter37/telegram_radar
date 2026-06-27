@@ -255,6 +255,8 @@ class MainWindow(QMainWindow):
         ids = {c.id for c in self._channel_store.enabled_list() if c.id}
         self._ingest.update_enabled_channels(ids)
         QTimer.singleShot(500, self._initial_stats)
+        # Validate channels: disable any that aren't real broadcast channels.
+        QTimer.singleShot(2500, self._initial_validate_channels)
 
     def _inject_engine_registry(self) -> None:
         if self._llm._extractor is not None:
@@ -286,6 +288,43 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _initial_validate_channels(self) -> None:
+        """Run once on startup: ensure enabled IDs are real broadcast channels.
+
+        Catches the common mistake where a user adds a personal @username
+        (which resolves to PeerUser) — those IDs never fire NewMessage
+        broadcasts, so the live feed stays empty.
+        """
+        ids = {c.id for c in self._channel_store.enabled_list() if c.id}
+        if not ids:
+            return
+        try:
+            valid_ids, invalid_map = self._ingest.validate_channels_sync(ids, timeout=20.0)
+        except Exception as e:
+            logger.warning("initial channel validate failed: %s", e)
+            return
+        if not invalid_map:
+            return
+        # Disable invalid channels and warn the user
+        for cid in invalid_map:
+            self._channel_store.set_enabled(cid, False)
+        bad_lines = []
+        for c in self._channel_store.list():
+            if c.id in invalid_map:
+                bad_lines.append(f"  • @{c.username} (id={c.id}) — {invalid_map[c.id]}")
+        # update enabled set
+        new_ids = {c.id for c in self._channel_store.enabled_list() if c.id}
+        self._ingest.update_enabled_channels(new_ids)
+        self._right_pane.set_channels(len(self._channel_store.enabled_list()))
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.warning(
+            self, "잘못된 채널 자동 비활성화",
+            f"다음은 broadcast 채널이 아닙니다 (PeerUser 등).\n"
+            f"자동 비활성화했습니다. 공개 @username 채널만 추가하세요.\n\n"
+            + "\n".join(bad_lines)
+            + "\n\n[⚙ 채널 관리]에서 public @username 채널을 다시 추가하세요."
+        )
+
     # ---------- slots ----------
 
     def _on_tab_changed(self, tab_id: str) -> None:
@@ -307,9 +346,41 @@ class MainWindow(QMainWindow):
 
     def _on_channels_changed(self) -> None:
         ids = {c.id for c in self._channel_store.enabled_list() if c.id}
-        self._ingest.update_enabled_channels(ids)
-        # update right pane channel count
+        # Validate via the ingest worker (runs in its asyncio loop).
+        # Inactive ones get disabled with a clear message.
+        try:
+            valid_ids, invalid_map = self._ingest.validate_channels_sync(ids)
+        except Exception as e:
+            self._status_msg.setText(f"채널 검증 실패: {e}")
+            valid_ids = ids
+            invalid_map = {}
+        if invalid_map:
+            for cid, reason in invalid_map.items():
+                # disable the bad entry so we don't keep trying it
+                self._channel_store.set_enabled(cid, False)
+            bad_names = []
+            for c in self._channel_store.list():
+                if c.id in invalid_map:
+                    bad_names.append(f"@{c.username} (id={c.id})")
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, "잘못된 채널 자동 비활성화",
+                f"다음 항목은 broadcast 채널이 아닙니다 (PeerUser 등).\n"
+                f"자동 비활성화했습니다. public @username 채널만 추가하세요.\n\n"
+                + "\n".join(f"  • {n} — {invalid_map.get(self._lookup_id(n), '')}"
+                             for n in bad_names)
+            )
+            ids = {c.id for c in self._channel_store.enabled_list() if c.id}
+            valid_ids = {i for i in ids}
+        self._ingest.update_enabled_channels(valid_ids)
         self._right_pane.set_channels(len(self._channel_store.enabled_list()))
+
+    def _lookup_id(self, label: str) -> int:
+        # helper used by the warning message above
+        try:
+            return int(label.split("id=")[1].rstrip(")"))
+        except Exception:
+            return 0
 
     def _on_message_collected(self, feed_id: int, payload: dict) -> None:
         # hand off to LLM worker
