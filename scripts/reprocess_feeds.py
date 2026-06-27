@@ -128,7 +128,15 @@ async def _process_one(
         return False, f"db insert failed: {e}"
 
 
-async def _main(args: argparse.Namespace) -> None:
+def _make_extractor(llm_cfg) -> LLMExtractor:
+    return LLMExtractor(
+        base_url=llm_cfg.base_url,
+        api_key=llm_cfg.api_key,
+        model=llm_cfg.model,
+    )
+
+
+def _main(args: argparse.Namespace) -> None:
     llm_cfg = load_llm_config()
     log.info("LLM endpoint: %s model=%s", llm_cfg.base_url, llm_cfg.model)
     interests = load_user_interests()
@@ -137,13 +145,12 @@ async def _main(args: argparse.Namespace) -> None:
     connection.init_db(db_path)
     conn = connection.get_connection(db_path)
 
-    # Fetch feed items that have NO successful llm_extraction yet.
-    # Includes items where parsing failed (parsed_ok=0) so we can retry.
+    # Fetch ALL feed items (or filter by --since) — we always re-run because
+    # the schema/prompt may have changed since the original extraction.
     sql = """
         SELECT f.id, f.datetime AS ts, f.channel_name, f.message_text AS text, f.message_url AS url
         FROM feed_items f
-        LEFT JOIN llm_extractions e ON e.feed_id = f.id AND e.parsed_ok = 1
-        WHERE e.id IS NULL
+        WHERE 1=1
     """
     params: list = []
     if args.since:
@@ -158,37 +165,36 @@ async def _main(args: argparse.Namespace) -> None:
     if not feeds:
         return
 
-    extractor = LLMExtractor(
-        base_url=llm_cfg.base_url,
-        api_key=llm_cfg.api_key,
-        model=llm_cfg.model,
-    )
+    # Resolve model once with a throwaway extractor.
     try:
-        model_id = await extractor.resolve_model()
+        boot = _make_extractor(llm_cfg)
+        model_id = asyncio.run(boot.resolve_model())
         log.info("Resolved model: %s", model_id)
     except Exception as e:
         log.warning("resolve_model failed (continuing with configured): %s", e)
 
-    # Process with concurrency.
-    sem = asyncio.Semaphore(5)
-
-    async def _run(feed: dict) -> tuple[int, bool, str]:
-        async with sem:
-            ok, err = await _process_one(extractor, conn, interests, feed)
-            return feed["id"], ok, err
-
     t0 = time.monotonic()
     ok_count = 0
     fail_count = 0
-    # Iterate oldest-first to keep timeline coherent.
+    # Iterate oldest-first to keep timeline coherent. We process each feed
+    # in its own short-lived asyncio.run() with a fresh extractor so the
+    # httpx client gets bound to a live event loop. This avoids the
+    # 'Event loop is closed' error from a cached client surviving across
+    # multiple asyncio.run() invocations.
     for feed in reversed(feeds):
-        fid, ok, err = await _run(feed)
+        try:
+            extractor = _make_extractor(llm_cfg)
+            ok, err = asyncio.run(_process_one(extractor, conn, interests, feed))
+        except Exception as e:
+            fail_count += 1
+            log.exception("[EXC ] feed_id=%s err=%s", feed.get("id"), e)
+            continue
         if ok:
             ok_count += 1
-            log.info("[OK  ] feed_id=%d (running total ok=%d fail=%d)", fid, ok_count, fail_count)
+            log.info("[OK  ] feed_id=%d (running total ok=%d fail=%d)", feed["id"], ok_count, fail_count)
         else:
             fail_count += 1
-            log.warning("[FAIL] feed_id=%d err=%s", fid, err)
+            log.warning("[FAIL] feed_id=%d err=%s", feed["id"], err)
     elapsed = time.monotonic() - t0
     log.info(
         "Done. ok=%d fail=%d total=%d elapsed=%.1fs (%.1f msgs/s)",
@@ -206,6 +212,6 @@ def _parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = _parse_args()
     try:
-        asyncio.run(_main(args))
+        _main(args)
     except KeyboardInterrupt:
         sys.exit(130)
