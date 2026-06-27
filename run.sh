@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Market Radar Desktop — run script
-# Loads .env if present, exports TG_* variables, then launches the app.
+# Priority: .env > ~/.bashrc TG_* exports > .env.example bootstrap
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Load .env file if it exists (overriding nothing)
+# Load .env file if it exists (highest priority)
 if [ -f .env ]; then
     set -a
     # shellcheck disable=SC1091
@@ -15,7 +15,30 @@ if [ -f .env ]; then
     set +a
 fi
 
-# Check required environment variables (warn only — first launch needs login)
+# If TG_* vars are still missing, try ~/.bashrc with login-shell semantics
+# (bash -lc forces ~/.bash_profile / ~/.profile to load, but ~/.bashrc is
+# typically interactive-only). We source it directly — if the user has the
+# standard interactive-only guard at the top of ~/.bashrc, that guard will
+# `return` early and TG_* won't appear. In that case, fall back to extracting
+# them from the live shell environment via the login-shell variant.
+NEED_RC=0
+for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
+    if [ -z "${!var:-}" ]; then
+        NEED_RC=1
+        break
+    fi
+done
+if [ "$NEED_RC" = "1" ]; then
+    # Use `bash -lic` which loads /etc/profile, ~/.bash_profile, ~/.profile,
+    # and runs ~/.bashrc in interactive mode. Then export TG_* vars.
+    while IFS='=' read -r key value; do
+        case "$key" in
+            TG_*) export "$key=$value" ;;
+        esac
+    done < <(bash -lic 'env' 2>/dev/null | grep -E '^TG_')
+fi
+
+# If still missing, offer to bootstrap .env from .env.example
 MISSING=()
 for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
     if [ -z "${!var:-}" ]; then
@@ -24,10 +47,21 @@ for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
-    echo "[run.sh] WARNING: missing env vars: ${MISSING[*]}"
-    echo "[run.sh] The app will fail to connect without them."
-    echo "[run.sh] See README.md for setup instructions."
-    echo ""
+    if [ ! -f .env ] && [ -f .env.example ]; then
+        echo "[run.sh] No .env found and TG_* vars are not exported in your shell."
+        echo "[run.sh] Bootstrapping .env from .env.example — please edit it with your real values."
+        cp .env.example .env
+        echo "[run.sh] Created .env — open it in your editor, fill in TG_API_ID / TG_API_HASH / TG_PHONE,"
+        echo "[run.sh] then run ./run.sh again."
+        echo ""
+        exit 1
+    fi
+    echo "[run.sh] ERROR: missing env vars: ${MISSING[*]}"
+    echo "[run.sh] Either:"
+    echo "[run.sh]   1) Edit .env in this directory, OR"
+    echo "[run.sh]   2) export TG_* in ~/.bashrc / ~/.profile (export, not just variable)"
+    echo "[run.sh] See README.md for details."
+    exit 1
 fi
 
 # Pick python
