@@ -7,9 +7,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Save the inherited GUI environment BEFORE running `bash -lic`, which
-# spawns a fresh shell that may not have these variables (login shells on
-# Wayland sessions sometimes lose DISPLAY/WAYLAND_DISPLAY/XAUTHORITY).
+# Save GUI environment from parent shell. Wayland/X11 desktop launchers
+# usually inherit DISPLAY/WAYLAND_DISPLAY/XAUTHORITY/DBUS_SESSION_BUS_ADDRESS
+# into the shell that runs ./run.sh, but some setups don't — and Qt's
+# silent exit when no display is available is the #1 "it just blinks"
+# complaint.
 PARENT_DISPLAY="$DISPLAY"
 PARENT_WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
 PARENT_XAUTHORITY="$XAUTHORITY"
@@ -32,9 +34,6 @@ for var in TG_API_ID TG_API_HASH TG_PHONE TG_LLM_BASE_URL; do
     fi
 done
 if [ "$NEED_RC" = "1" ]; then
-    # `bash -lic` runs /etc/profile + ~/.bash_profile + ~/.profile + ~/.bashrc
-    # interactively. Use `< /dev/null` so bash doesn't hang waiting for stdin
-    # (process substitution alone doesn't always close stdin promptly).
     while IFS='=' read -r key value; do
         case "$key" in
             TG_*) export "$key=$value" ;;
@@ -83,7 +82,31 @@ if ! "$PYTHON_BIN" -c "import PySide6, telethon, httpx, yfinance" 2>/dev/null; t
     "$PYTHON_BIN" -m pip install -r requirements.txt
 fi
 
-# Run (do NOT use exec — let the shell survive so error messages remain
-# visible after the GUI closes; some desktop launchers kill the parent shell
-# on exit which would swallow stderr).
-"$PYTHON_BIN" run.py "$@"
+# ---- Diagnostic: warn if GUI display env is missing (silent Qt exit) ----
+if [ -z "${DISPLAY:-}" ]; then
+    if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+        echo "[run.sh] WARNING: Neither DISPLAY (X11) nor WAYLAND_DISPLAY is set."
+        echo "[run.sh] Qt will fail to open a window and the app will exit silently."
+        echo "[run.sh] Launch ./run.sh from a graphical terminal (gnome-terminal, konsole,"
+        echo "[run.sh] xfce4-terminal, etc.), or set DISPLAY=:0 manually."
+        echo ""
+    fi
+fi
+
+# ---- Run, capturing stderr/stdout so the GUI launcher's "close on exit"
+# can't swallow our diagnostics. The log is kept in $HOME and its last
+# lines are echoed back even on success (in case the GUI never showed up). ----
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/telegram_radar"
+mkdir -p "$LOG_DIR"
+LOG="$LOG_DIR/run.log"
+echo "[run.sh] Logs are written to: $LOG"
+
+RC=0
+"$PYTHON_BIN" run.py "$@" >"$LOG" 2>&1 || RC=$?
+
+echo ""
+echo "[run.sh] Last 30 lines of log:"
+tail -n 30 "$LOG"
+echo ""
+echo "[run.sh] App exited with code $RC. Full log: $LOG"
+exit "$RC"
