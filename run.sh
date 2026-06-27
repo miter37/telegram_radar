@@ -109,6 +109,17 @@ if [ -z "${DISPLAY:-}" ]; then
     fi
 fi
 
+# ---- Diagnostic: Telegram session status ----
+SESSION_FILE="$SCRIPT_DIR/data/market_radar.session"
+if [ -f "$SESSION_FILE" ]; then
+    SIZE=$(stat -c %s "$SESSION_FILE" 2>/dev/null || echo 0)
+    echo "[run.sh] Telegram session found ($SIZE bytes). If authorized, no code prompt will appear."
+    echo "[run.sh] To force re-login, delete: $SESSION_FILE"
+else
+    echo "[run.sh] No Telegram session yet — code prompt will appear on first run."
+fi
+echo ""
+
 # ---- Run, capturing stderr/stdout so the GUI launcher's "close on exit"
 # can't swallow our diagnostics. The log is kept in $HOME and its last
 # lines are echoed back even on success (in case the GUI never showed up). ----
