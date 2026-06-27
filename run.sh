@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
 # Market Radar Desktop — run script
+# Usage: ./run.sh    (do NOT type just "run.sh" without the ./)
 # Priority: .env > ~/.bashrc TG_* exports > .env.example bootstrap
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve script directory even if the user typed just "run.sh" without ./
+# (BASH_SOURCE[0] only works when invoked with a path; we fall back to pwd.)
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ "${BASH_SOURCE[0]}" != "run.sh" ] && [ "${BASH_SOURCE[0]}" != "./run.sh" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="$(pwd)"
+fi
 cd "$SCRIPT_DIR"
+
+# Hint if user forgot the ./
+case "$0" in
+    run.sh|bash|sh)
+        echo "[run.sh] TIP: run with './run.sh' (with the dot-slash),"
+        echo "[run.sh]      not just 'run.sh'. Otherwise the shell can't find it."
+        echo ""
+        ;;
+esac
 
 # Save GUI environment from parent shell. Wayland/X11 desktop launchers
 # usually inherit DISPLAY/WAYLAND_DISPLAY/XAUTHORITY/DBUS_SESSION_BUS_ADDRESS
