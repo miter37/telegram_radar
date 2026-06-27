@@ -6,6 +6,12 @@ from typing import Any
 
 from jsonschema import Draft7Validator
 
+# Korean-char length caps matching feed_extract_v0.1 prompt rules:
+#   - topic: 12자 이내
+#   - main_content: 50자 이내
+TOPIC_MAX_CHARS = 12
+MAIN_CONTENT_MAX_CHARS = 50
+
 SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": [
@@ -22,8 +28,8 @@ SCHEMA: dict[str, Any] = {
     "properties": {
         "datetime": {"type": "string", "minLength": 1},
         "channel_name": {"type": "string", "minLength": 1},
-        "topic": {"type": "string", "minLength": 1, "maxLength": 100},
-        "main_content": {"type": "string", "minLength": 1, "maxLength": 200},
+        "topic": {"type": "string", "minLength": 1, "maxLength": TOPIC_MAX_CHARS * 4},
+        "main_content": {"type": "string", "minLength": 1, "maxLength": MAIN_CONTENT_MAX_CHARS * 4},
         "tags": {"type": "array", "items": {"type": "string"}},
         "tag_groups": {
             "type": "object",
@@ -43,6 +49,19 @@ SCHEMA: dict[str, Any] = {
 _validator = Draft7Validator(SCHEMA)
 
 
+def _truncate_korean(text: str, max_chars: int) -> str:
+    """Truncate at Korean-char boundary (max_chars count of graphemes).
+
+    Uses len() which counts code points; for CJK this is a close
+    approximation of "characters". Falls back to hard slice if needed.
+    """
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip()
+
+
 def validate(payload: dict) -> tuple[bool, str | None]:
     """Return (ok, first_error_message)."""
     errors = list(_validator.iter_errors(payload))
@@ -54,7 +73,9 @@ def validate(payload: dict) -> tuple[bool, str | None]:
 
 
 def coerce(payload: dict) -> dict:
-    """Best-effort coercion: clip scores, ensure list types, defaults."""
+    """Best-effort coercion: clip scores, ensure list types, defaults,
+    and enforce Korean-char length caps on topic (12) + main_content (50).
+    """
     out = dict(payload)
     for key in ("importance_score", "interest_score"):
         try:
@@ -77,4 +98,9 @@ def coerce(payload: dict) -> dict:
         v = out.get(k)
         if not isinstance(v, str):
             out[k] = ""
+    # Enforce prompt-declared length caps (Korean chars).
+    if out.get("topic"):
+        out["topic"] = _truncate_korean(out["topic"], TOPIC_MAX_CHARS)
+    if out.get("main_content"):
+        out["main_content"] = _truncate_korean(out["main_content"], MAIN_CONTENT_MAX_CHARS)
     return out
